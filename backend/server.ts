@@ -5,9 +5,34 @@ import User from "./models/User"
 import Coupon from "./models/Coupon"
 import * as jwt from "jsonwebtoken"
 import cors from "cors"
+import bodyParser from "body-parser"
 require('dotenv').config()
 
+
 const app = express()
+
+app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }) , async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_ENDPOINT_SECRET);
+    } catch (err:any) {
+        res.status(400).send(`Webhook Error: ${err.message}`);
+        return;
+    }
+    
+
+    // Handle the event
+    if(event.type === 'checkout.session.completed'){
+
+    }
+
+    // Return a 200 response to acknowledge receipt of the event
+    res.send();
+
+});
 
 app.use(express.urlencoded({extended:true}))
 app.use(express.json());
