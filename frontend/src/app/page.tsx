@@ -35,7 +35,7 @@ export default function Home() {
     }else{
       // localStorage.setItem("signInToken",data.token)
       // localStorage.setItem("userId",data.id)
-      window.location.href = "/payment"
+      window.location.href = "/dashboard"
     } 
   }
 
@@ -68,7 +68,6 @@ export default function Home() {
         {error.error && <p className="text-red-600 text-xs mb-4">{error.text}</p>}
 
         <button className='bg-green-600 text-white px-4 py-2 rounded-md mt-1 text-sm mb-4 block'>Login</button>
-        <a href="/register" className='text-xs text-blue-700 block mx-auto text-center w-full'>Create Account Instead</a>
       </form>
   </main>
   )

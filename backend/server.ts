@@ -2,6 +2,7 @@ import express,{Request,Response} from "express"
 import mongoose from "mongoose"
 import bcrypt from "bcrypt";
 import User from "./models/User"
+import Coupon from "./models/Coupon"
 import * as jwt from "jsonwebtoken"
 import cors from "cors"
 require('dotenv').config()
@@ -43,6 +44,8 @@ app.post("/login",async(req:Request,res:Response) => {
         if(verifiedUser && process.env.JWT_SECRET){
             const token = jwt.sign({id: existingUser.id},process.env.JWT_SECRET)
             res.cookie("signInToken",token)
+            res.cookie("email",existingUser.email)
+            res.cookie("id",existingUser.id)
             return res.json({success:true, id:existingUser.id,token})
         }else{            
             return res.json({success:false})
@@ -54,7 +57,9 @@ app.post("/login",async(req:Request,res:Response) => {
         if(process.env.JWT_SECRET){
             const token = jwt.sign({id: user.id},process.env.JWT_SECRET)
             res.cookie("signInToken",token)
-            return res.json({success:true, id:user.id,token})
+            res.cookie("email",user.email)
+            res.cookie("id",user.id)
+            return res.json({success:true, id:user.id,email:user.email,token})
         }
     }
 })
@@ -79,7 +84,18 @@ app.get("/create-checkout-session",async(req:Request,res:Response) => {
             }
         }]
     })
+
     return res.redirect(session.url)
+})
+
+app.get("/validate-coupon/:code",async(req:Request,res:Response) => {
+    const {code} = req.params
+    const dbCoupon = await Coupon.findOne({code})
+    if(dbCoupon){
+        return res.json({success:true})
+    }else{
+        return res.json({success:false})
+    }
 })
 
 app.listen(8000,() => {
