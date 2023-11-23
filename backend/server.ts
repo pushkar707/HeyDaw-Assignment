@@ -12,9 +12,11 @@ app.use(express.urlencoded({extended:true}))
 app.use(express.json());
 
 app.use(cors({
-    origin:"http://localhost:3000", 
+    origin:process.env.CLIENT_URL, 
     credentials:true,
 }))
+
+const stripe = require("stripe")(process.env.STRIPE_PRIVATE_KEY)
 
 mongoose.connect(process.env.MONGO_DB_URI || "")
 .then(() => {
@@ -55,6 +57,29 @@ app.post("/login",async(req:Request,res:Response) => {
             return res.json({success:true, id:user.id,token})
         }
     }
+})
+
+app.get("/create-checkout-session",async(req:Request,res:Response) => {
+    const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        success_url:process.env.CLIENT_URL+"/success",
+        cancel_url:process.env.CLIENT_URL+"/success"+"/failure",
+        line_items: [{
+            quantity:1,
+            price_data: {
+                currency: "inr",
+                product_data: {
+                    name: "HeyDaw Pemium Subscriotion",
+                },
+                recurring:{
+                    interval: "month",
+                    interval_count:1,
+                },
+                unit_amount:83195
+            }
+        }]
+    })
+    return res.redirect(session.url)
 })
 
 app.listen(8000,() => {
