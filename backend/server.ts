@@ -3,23 +3,15 @@ import mongoose from "mongoose"
 import bcrypt from "bcrypt";
 import User from "./models/User"
 import Coupon from "./models/Coupon"
+import Payment from "./models/Payement"
 import * as jwt from "jsonwebtoken"
 import cors from "cors"
 import bodyParser from "body-parser"
-import cookieParser from "cookie-parser"
 require('dotenv').config()
 
 
 const app = express()
-
-// app.use(session({
-//     secret: 'keyboard cat',
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: { secure: true }
-// }))
-
-app.use(cookieParser());
+const stripe = require("stripe")(process.env.STRIPE_PRIVATE_KEY)
 
 app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }) , async (req, res) => {
     const sig = req.headers['stripe-signature'];
@@ -37,12 +29,19 @@ app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }) , async
     if(event.type === 'checkout.session.completed'){
         // console.log(event.data.object);  
         const metadata = event.data.object.metadata;
-        console.log(metadata);        
+        const {paymentEmail,paymentphoneNumber} = metadata
+        const user = await User.findOne({email:paymentEmail})
+        if(user){
+            const payment = await Payment.create({payer:user.id,lastBillingDate:new Date(),totalBillings:1})
+            user.premiumUser = true
+            user.payment = payment.id
+            await user.save()
+        }
+        // return res.json({success:true,email:user?.email});
     }
-
+    // return res.json({success:false})
+    res.send()
     // Return a 200 response to acknowledge receipt of the event
-    res.send();
-
 });
 
 app.use(express.urlencoded({extended:true}))
@@ -53,7 +52,6 @@ app.use(cors({
     credentials:true,
 }))
 
-const stripe = require("stripe")(process.env.STRIPE_PRIVATE_KEY)
 
 mongoose.connect(process.env.MONGO_DB_URI || "")
 .then(() => {
@@ -74,8 +72,8 @@ app.post("/login",async(req:Request,res:Response) => {
     if(!email.length || !password.length){
         return res.json({success:false})
     }
-    const existingUser = await User.findOne({email}) 
-    if(existingUser && existingUser.password){      
+    const existingUser = await User.findOne({email})
+    if(existingUser && existingUser.password){
         const verifiedUser = bcrypt.compareSync(password,existingUser.password)
         if(verifiedUser && process.env.JWT_SECRET){
             const token = jwt.sign({id: existingUser.id},process.env.JWT_SECRET)
@@ -100,23 +98,15 @@ app.post("/login",async(req:Request,res:Response) => {
     }
 })
 
-app.post("/payment",async(req:Request,res:Response) => {
+app.post("/create-checkout-session",async(req:Request,res:Response) => {
     const {userEmail,mobileNumber,coupon} = req.body
-    res.cookie("paymentEmail",userEmail)
-    res.cookie("paymentMobileNumber",mobileNumber)
-    res.cookie("paymentCoupon",coupon)
-    return res.json({redirectUrl: process.env.SERVER_URL + "/create-checkout-session"})
-})
-
-app.get("/create-checkout-session",async(req:Request,res:Response) => {
-    const paymentCoupon = req.cookies['paymentCoupon']
-    const verifyCoupon = await Coupon.findOne({code:paymentCoupon})    
+    const verifyCoupon = await Coupon.findOne({code:coupon})    
     const amount = verifyCoupon ? Math.floor(83195/2) : 83195
 
     const session = await stripe.checkout.sessions.create({
         mode: "subscription",
-        success_url:process.env.CLIENT_URL+"/success",
-        cancel_url:process.env.CLIENT_URL+"/success"+"/failure",
+        success_url:process.env.CLIENT_URL+"/premium",
+        cancel_url:process.env.CLIENT_URL+"/dashboard",
         line_items: [{
             quantity:1,
             price_data: {
@@ -132,12 +122,12 @@ app.get("/create-checkout-session",async(req:Request,res:Response) => {
             }
         }],
         metadata:{
-            paymentEmail:req.cookies['paymentEmail'],
-            paymentphoneNumber:req.cookies['paymentMobileNumber']
+            paymentEmail:userEmail,
+            paymentphoneNumber:mobileNumber
         }
     })
 
-    return res.redirect(session.url)
+    return res.json({redirectUrl:session.url})
 })
 
 app.get("/validate-coupon/:code",async(req:Request,res:Response) => {
@@ -148,6 +138,15 @@ app.get("/validate-coupon/:code",async(req:Request,res:Response) => {
     }else{
         return res.json({success:false})
     }
+})
+
+app.get("/check-premium/:id",async(req:Request,res:Response) => {
+    const {id} = req.params
+    const user = await User.findById(id)
+    if(user?.premiumUser){
+        return res.json({premium:true})
+    }
+    return res.json({premium:false})
 })
 
 app.listen(8000,() => {

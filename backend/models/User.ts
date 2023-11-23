@@ -10,7 +10,8 @@ const userSchema = new Schema({
     payment:{
         type:Schema.Types.ObjectId,
         ref:"Payment"
-    }
+    },
+    premiumUser:Boolean
 })
 
 export default mongoose.model("User",userSchema)
