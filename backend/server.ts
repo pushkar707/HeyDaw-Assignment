@@ -6,15 +6,24 @@ import Coupon from "./models/Coupon"
 import * as jwt from "jsonwebtoken"
 import cors from "cors"
 import bodyParser from "body-parser"
+import cookieParser from "cookie-parser"
 require('dotenv').config()
 
 
 const app = express()
 
+// app.use(session({
+//     secret: 'keyboard cat',
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: { secure: true }
+// }))
+
+app.use(cookieParser());
+
 app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }) , async (req, res) => {
     const sig = req.headers['stripe-signature'];
-
-    let event;
+    let event:any;
 
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_ENDPOINT_SECRET);
@@ -26,7 +35,9 @@ app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }) , async
 
     // Handle the event
     if(event.type === 'checkout.session.completed'){
-
+        // console.log(event.data.object);  
+        const metadata = event.data.object.metadata;
+        console.log(metadata);        
     }
 
     // Return a 200 response to acknowledge receipt of the event
@@ -89,7 +100,19 @@ app.post("/login",async(req:Request,res:Response) => {
     }
 })
 
+app.post("/payment",async(req:Request,res:Response) => {
+    const {userEmail,mobileNumber,coupon} = req.body
+    res.cookie("paymentEmail",userEmail)
+    res.cookie("paymentMobileNumber",mobileNumber)
+    res.cookie("paymentCoupon",coupon)
+    return res.json({redirectUrl: process.env.SERVER_URL + "/create-checkout-session"})
+})
+
 app.get("/create-checkout-session",async(req:Request,res:Response) => {
+    const paymentCoupon = req.cookies['paymentCoupon']
+    const verifyCoupon = await Coupon.findOne({code:paymentCoupon})    
+    const amount = verifyCoupon ? Math.floor(83195/2) : 83195
+
     const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         success_url:process.env.CLIENT_URL+"/success",
@@ -105,9 +128,13 @@ app.get("/create-checkout-session",async(req:Request,res:Response) => {
                     interval: "month",
                     interval_count:1,
                 },
-                unit_amount:83195
+                unit_amount:amount
             }
-        }]
+        }],
+        metadata:{
+            paymentEmail:req.cookies['paymentEmail'],
+            paymentphoneNumber:req.cookies['paymentMobileNumber']
+        }
     })
 
     return res.redirect(session.url)

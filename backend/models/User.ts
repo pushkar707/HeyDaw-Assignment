@@ -5,7 +5,12 @@ const userSchema = new Schema({
         type:String,
         unique:true
     },
-    password:String
+    password:String,
+    mobileNumber:Number,
+    payment:{
+        type:Schema.Types.ObjectId,
+        ref:"Payment"
+    }
 })
 
 export default mongoose.model("User",userSchema)

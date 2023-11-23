@@ -6,7 +6,6 @@ const paymentSchema = new Schema({
         ref:"User"
     },
     lastBillingDate:String,
-    lastBillingAmount: Number,
     totalBillings:Number
 })
 

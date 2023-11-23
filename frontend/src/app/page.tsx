@@ -50,7 +50,7 @@ export default function Home() {
     <main className="h-screen flex flex-col justify-center items-center px-5 py-5">
       <h3 className="text-center mb-4">Welcome to HeyDaw</h3>
       {/* Sign In Form */}
-      <form className='w-full max-w-4xl bg-gray-50 h-fit p-8' onSubmit={loginUser}>
+      <form method="POST" className='w-full max-w-4xl bg-gray-50 h-fit p-8' onSubmit={loginUser}>
         <div className='mb-4'>
           <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">Email</label>
           <div className="relative mt-2 rounded-md shadow-sm">

@@ -42,9 +42,19 @@ const page = () => {
         }
     }
 
-    const handleSubmit = (e:FormEvent) => {
+    const handleSubmit = async (e:FormEvent) => {
         e.preventDefault()
-        
+        const res = await fetch(process.env.NEXT_PUBLIC_API_DOMAIN+'/payment',{
+            method: 'POST',
+            credentials:"include",
+            headers:{
+                'Content-Type': 'application/json',
+            },
+            body:JSON.stringify({userEmail,mobileNumber,coupon})
+        })
+        const data = await res.json()
+        console.log(data);        
+        window.location.href = data.redirectUrl
     }
 
 
@@ -54,7 +64,7 @@ const page = () => {
     <p>You are currently on our free plan</p>
     <p>Fill the form below to be a premium user at just $9.99/month</p>
 
-    <form action="" className='mt-4' onSubmit={handleSubmit}>
+    <form method='POST' className='mt-4' onSubmit={handleSubmit}>
         <input value={userEmail} disabled type="email" name="email" id="email" className="mb-3 block w-[70%] rounded-md border-0 py-2 px-2 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 placeholder:text-sm focus:ring-2 focus:ring-inset focus:ring-indigo-200 sm:text-sm sm:leading-6 text-sm" placeholder="Enter Your Email"/>
         <input value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value)} type="number" name="mobileNumber" id="email" className="mb-3 block w-[70%] rounded-md border-0 py-2 px-2 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 placeholder:text-sm focus:ring-2 focus:ring-inset focus:ring-indigo-200 sm:text-sm sm:leading-6 text-sm" placeholder="Enter Your Mobile Number"/>
         <input value={coupon} onChange={handleCouponChange} type="text" name="coupon" id="email" className="mb-3 block w-[70%] rounded-md border-0 py-2 px-2 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 placeholder:text-sm focus:ring-2 focus:ring-inset focus:ring-indigo-200 sm:text-sm sm:leading-6 text-sm" placeholder="Coupon Code"/>
