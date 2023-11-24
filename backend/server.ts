@@ -13,6 +13,7 @@ require('dotenv').config()
 const app = express()
 const stripe = require("stripe")(process.env.STRIPE_PRIVATE_KEY)
 
+// Whenever payment is completed a request is made by stripe on this route
 app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }) , async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event:any;
@@ -25,9 +26,8 @@ app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }) , async
     }
     
 
-    // Handle the event
+    // Handle the payment successful event
     if(event.type === 'checkout.session.completed'){
-        // console.log(event.data.object);  
         const metadata = event.data.object.metadata;
         const {paymentEmail,paymentphoneNumber} = metadata
         const user = await User.findOne({email:paymentEmail})
@@ -37,11 +37,9 @@ app.post('/webhook/stripe', bodyParser.raw({ type: 'application/json' }) , async
             user.payment = payment.id
             await user.save()
         }
-        // return res.json({success:true,email:user?.email});
     }
-    // return res.json({success:false})
-    res.send()
     // Return a 200 response to acknowledge receipt of the event
+    res.send()
 });
 
 app.use(express.urlencoded({extended:true}))
@@ -73,6 +71,7 @@ app.post("/login",async(req:Request,res:Response) => {
         return res.json({success:false})
     }
     const existingUser = await User.findOne({email})
+    // Logging in existing user
     if(existingUser && existingUser.password){
         const verifiedUser = bcrypt.compareSync(password,existingUser.password)
         if(verifiedUser && process.env.JWT_SECRET){
@@ -85,6 +84,7 @@ app.post("/login",async(req:Request,res:Response) => {
             return res.json({success:false})
         }
     }else{
+        // Creating new user if there is no existing user with given email
         const salt = bcrypt.genSaltSync(10);
         const user = new User({email,password:bcrypt.hashSync(password, salt)})
         await user.save()
@@ -98,6 +98,8 @@ app.post("/login",async(req:Request,res:Response) => {
     }
 })
 
+
+// verifies coupon, sends more user data and return a payment link
 app.post("/create-checkout-session",async(req:Request,res:Response) => {
     const {userEmail,mobileNumber,coupon} = req.body
     const verifyCoupon = await Coupon.findOne({code:coupon})    
@@ -130,6 +132,7 @@ app.post("/create-checkout-session",async(req:Request,res:Response) => {
     return res.json({redirectUrl:session.url})
 })
 
+// To show coupon code validaion on the client side
 app.get("/validate-coupon/:code",async(req:Request,res:Response) => {
     const {code} = req.params
     const dbCoupon = await Coupon.findOne({code})
@@ -140,6 +143,7 @@ app.get("/validate-coupon/:code",async(req:Request,res:Response) => {
     }
 })
 
+// To verify if the user is a premium user
 app.get("/check-premium/:id",async(req:Request,res:Response) => {
     const {id} = req.params
     const user = await User.findById(id)

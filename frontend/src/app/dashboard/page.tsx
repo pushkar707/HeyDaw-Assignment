@@ -99,9 +99,6 @@ const page = () => {
             <button className='bg-green-600 text-white px-4 py-2 rounded-md mt-1 text-sm mb-4 block'>Enroll Now</button>
         </form>
       </> : <p>You are a premium user. Click <a className='text-blue-800' href="/premium">here</a> to access your premium dashboard</p>}
-        
-
-     
   </main>
   )
 }
